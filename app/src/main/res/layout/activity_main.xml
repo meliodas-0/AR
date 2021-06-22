@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <androidx.fragment.app.FragmentContainerView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/arFragment"
+        />
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/mainActivityMenu"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentTop="true"
+        android:layout_margin="20.0dp"
+        android:src="@drawable/ic_menu" />
+
+    <ImageButton
+        android:id="@+id/checkDistanceImageButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/mainActivityMenu"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="20.0dp"
+        android:layout_marginTop="20.0dp"
+        android:layout_marginEnd="20.0dp"
+        android:layout_marginBottom="20.0dp"
+        android:onClick="changeMeasurementTargets"
+        android:src="@android:drawable/btn_star_big_on" />
+
+    <Button
+        android:id="@+id/distanceMeasuringButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:onClick="checkDistance"
+        android:text="@string/object_to_object_distance" />
+</RelativeLayout>

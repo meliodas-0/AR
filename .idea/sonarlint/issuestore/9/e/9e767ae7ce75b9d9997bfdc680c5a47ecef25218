@@ -1,0 +1,12 @@
+
+t	java:S120"ZRename this package name to match the regular expression '^[a-z_]+(\.[a-z_][a-z0-9_]*)*$'.(ê‡Á´øÿÿÿÿ
+C
+java:S1604J"(Make this anonymous inner class a lambda(Ã®­Šùÿÿÿÿ
+=
+java:S1604u"(Make this anonymous inner class a lambda(®àÕx
+C
+java:S1604g"(Make this anonymous inner class a lambda(Ã®­Šùÿÿÿÿ
+2
+java:S1116 "Remove this empty statement.(™ƒê·
+ˆ
+java:S3252p"mUse static access with "com.google.android.material.snackbar.BaseTransientBottomBar" for "LENGTH_INDEFINITE".(•¹È•þÿÿÿÿ

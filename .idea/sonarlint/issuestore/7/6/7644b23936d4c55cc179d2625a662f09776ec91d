@@ -1,0 +1,8 @@
+
+t	java:S120"ZRename this package name to match the regular expression '^[a-z_]+(\.[a-z_][a-z0-9_]*)*$'.(ê‡Á´øÿÿÿÿ
+J
+java:S1128"4Remove this unused import 'android.content.Context'.(©Ê‰è
+p	java:S116"[Rename this field "SCROLL_THRESHOLD" to match the regular expression '^[a-z][a-zA-Z0-9]*$'.(¥øíÿ
+7
+java:S1170"!Make this final field static too.(¥øíÿ
+6	java:S131""Add a default case to this switch.(‰‡¨W
