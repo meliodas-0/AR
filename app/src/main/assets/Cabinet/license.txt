@@ -1,0 +1,11 @@
+Model Information:
+* title:	Old China Cabinet
+* source:	https://sketchfab.com/3d-models/old-china-cabinet-a6448e3833bf4ec68c0a919ece796ce2
+* author:	IvanovichRU (https://sketchfab.com/IvanovichRU)
+
+Model License:
+* license type:	CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
+* requirements:	Author must be credited. No commercial use.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Old China Cabinet" (https://sketchfab.com/3d-models/old-china-cabinet-a6448e3833bf4ec68c0a919ece796ce2) by IvanovichRU (https://sketchfab.com/IvanovichRU) licensed under CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)

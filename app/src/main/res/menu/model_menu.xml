@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:id="@+id/mewtwoMenuItem"
+
+    <item
+        android:id="@+id/models_option"
+        android:title="models" />
+    <item
+        android:id="@+id/find_distance"
+        android:title="Find distance" />
+
+
+    <!-- <item android:id="@+id/mewtwoMenuItem"
         android:title="mewtwo"/>
     <item android:id="@+id/tigerMenuItem"
     android:title="tiger"/>
@@ -13,5 +22,5 @@
     <item android:id="@+id/Sphere"
         android:title="Sphere" />
     <item android:id="@+id/Cylinder"
-        android:title="Cylinder" />
+        android:title="Cylinder" />-->
 </menu>

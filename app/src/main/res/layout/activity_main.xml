@@ -19,19 +19,36 @@
         android:layout_alignParentTop="true"
         android:layout_margin="20.0dp"
         android:src="@drawable/ic_menu" />
-
-    <ImageButton
-        android:id="@+id/checkDistanceImageButton"
+    <ImageView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/mainActivityMenu"
+        android:id="@+id/deleteModelIV"
         android:layout_alignParentEnd="true"
-        android:layout_marginStart="20.0dp"
-        android:layout_marginTop="20.0dp"
-        android:layout_marginEnd="20.0dp"
-        android:layout_marginBottom="20.0dp"
-        android:onClick="changeMeasurementTargets"
-        android:src="@android:drawable/btn_star_big_on" />
+        android:layout_below="@id/mainActivityMenu"
+        android:layout_margin="10.0dp"
+        android:src="@android:drawable/ic_delete"
+        android:onClick="deleteModel"
+        /><ImageView
+    android:layout_width="50.0dp"
+    android:layout_height="50.0dp"
+    android:layout_centerVertical="true"
+    android:id="@+id/increaseSizeIV"
+    android:layout_alignParentEnd="true"
+    android:layout_marginEnd="10.0dp"
+    android:src="@android:drawable/arrow_up_float"
+    android:onClick="changeModelDistanceFromGround"
+    />
+    <ImageView
+    android:layout_width="50.0dp"
+    android:layout_height="50.0dp"
+    android:id="@+id/decreaseSizeIV"
+    android:layout_alignParentEnd="true"
+    android:layout_margin="10.0dp"
+        android:layout_marginTop="30.0dp"
+        android:layout_below="@id/increaseSizeIV"
+    android:src="@android:drawable/arrow_down_float"
+    android:onClick="changeModelDistanceFromGround"
+    />
 
     <Button
         android:id="@+id/distanceMeasuringButton"
@@ -41,5 +58,6 @@
         android:layout_alignParentEnd="true"
         android:layout_alignParentBottom="true"
         android:onClick="checkDistance"
-        android:text="@string/object_to_object_distance" />
+        android:text="@string/object_to_object_distance"
+        android:visibility="gone"/>
 </RelativeLayout>

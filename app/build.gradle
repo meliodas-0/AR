@@ -40,9 +40,9 @@ dependencies {
 //    implementation 'com.google.ar.sceneform.ux:sceneform-ux:1.16.0'
 //
 //    // Alternatively, use ArSceneView without the UX dependency.
-//    implementation 'com.google.ar.sceneform:core:1.14.0'
+//    implementation 'com.google.ar.sceneform:core:1.16.0'
 
-    implementation("com.gorisse.thomas.sceneform:sceneform:1.19.1")
+    implementation("com.gorisse.thomas.sceneform:sceneform:1.19.4")
 
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
