@@ -3,4 +3,5 @@
     <string name="object_to_object_distance">Find distance : Object to Object</string>
     <string name="object_to_plane_distance">Find distance : Object to Plane</string>
     <string name="plane_to_plane_distance">Find distance : Plane to Plane</string>
+    <string name="select_model_from_menu_icon">Select Model from menu Icon.</string>
 </resources>

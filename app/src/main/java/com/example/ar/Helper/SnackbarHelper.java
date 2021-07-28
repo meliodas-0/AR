@@ -71,12 +71,7 @@ public final class SnackbarHelper {
     Snackbar messageSnackbarToHide = messageSnackbar;
     messageSnackbar = null;
     activity.runOnUiThread(
-        new Runnable() {
-          @Override
-          public void run() {
-            messageSnackbarToHide.dismiss();
-          }
-        });
+            messageSnackbarToHide::dismiss);
   }
 
   public void setMaxLines(int lines) {

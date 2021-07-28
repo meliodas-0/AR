@@ -1,14 +1,18 @@
 package com.example.ar;
 
 import android.app.AlertDialog;
-import android.net.Uri;
+import android.app.Dialog;
+import android.app.ProgressDialog;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.PopupMenu;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -16,8 +20,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentOnAttachListener;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.ar.Helper.TouchHelper;
+import com.example.ar.Helper.Model;
+import com.example.ar.Helper.ModelAdapter;
+import com.example.ar.Helper.ModelHelper;
+import com.example.ar.Helper.Enums.SHAPE;
 import com.google.android.filament.ColorGrading;
 import com.google.ar.core.Anchor;
 import com.google.ar.core.Config;
@@ -32,74 +41,64 @@ import com.google.ar.sceneform.Node;
 import com.google.ar.sceneform.Sceneform;
 import com.google.ar.sceneform.Sun;
 import com.google.ar.sceneform.math.Vector3;
-import com.google.ar.sceneform.rendering.Color;
+import com.google.ar.sceneform.rendering.CameraStream;
 import com.google.ar.sceneform.rendering.EngineInstance;
-import com.google.ar.sceneform.rendering.MaterialFactory;
-import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.rendering.Renderable;
 import com.google.ar.sceneform.rendering.Renderer;
-import com.google.ar.sceneform.rendering.ShapeFactory;
-import com.google.ar.sceneform.rendering.ViewRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.BaseArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
-import com.google.ar.sceneform.ux.TranslationController;
 
-import java.lang.ref.WeakReference;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.Stack;
+
+import de.hdodenhof.circleimageview.CircleImageView;
+import io.github.controlwear.virtual.joystick.android.JoystickView;
 
 public class MainActivity extends AppCompatActivity implements
         FragmentOnAttachListener,
         BaseArFragment.OnTapArPlaneListener,
         ArFragment.OnViewCreatedListener,
         BaseArFragment.OnSessionConfigurationListener {
-    private ArFragment arFragment;
-    private Renderable model;
-    private ViewRenderable viewRenderable;
-    private Map<CharSequence, String> models;
-    private String uri;
-    private ImageView menuImageView;
-    private boolean shapeSelected = true;
-    private TranslationController translationController;
-    Stack<TransformableNode> nodesSelected = new Stack<>();
+    public ArFragment arFragment;
+    public Renderable model;
+    public int modelNumber;
+    public TextView modelNameTextView;
+    public CircleImageView modelImageView;
+    private ImageView menuImageView, deleteButtonIV, upInYAxisIV, downInYAxisIV;
+    private ArSceneView arSceneView;
 
-    private CharSequence[] modelNameArray;
-    private CharSequence[] distanceBetweenArray = new CharSequence[]{"Object to Object", "Plane to object", "Plane to plane"};
+    public ProgressDialog pd;
+    private JoystickView joystick;
+    public Dialog modelSelectingDialog;
+    private final CharSequence[] distanceBetweenArray = new CharSequence[]{"Object to Object", "Plane to object", "Plane to plane"};
+    private final CharSequence[] depthModes = new CharSequence[]{"Raw Depth", "Automatic ", "Disabled"};
 
-    private int checkedItemInDistanceBetweenArray = 0;
+    private int checkedItemInDepthMode;
 
-    private Stack<Plane> planeList = new Stack<>();
-
-    private TouchHelper touchHelper;
+    private final Stack<Plane> planeList = new Stack<>();
 
     private Button measureButton;
 
-    private SHAPE shapeForm = SHAPE.CUBE;
-
     private DISTANCE_TO_FIND_BETWEEN distanceToFindBetween = DISTANCE_TO_FIND_BETWEEN.OBJECT_TO_OBJECT;
-    private int checkedItemInModelNameArray = 0;
     private boolean checkingDistance = false;
 
-    private enum SHAPE {
-        CUBE,
-        SPHERE,
-        CYLINDER;
-
-    }
+    public ModelHelper modelHelper;
+    private Config.DepthMode depthMode = Config.DepthMode.DISABLED;
 
     private enum DISTANCE_TO_FIND_BETWEEN {
         OBJECT_TO_OBJECT,
         PLANE_TO_OBJECT,
-        PLANE_TO_PLANE;
+        PLANE_TO_PLANE
 
     }
 
     @Override
     public void onSessionConfiguration(Session session, Config config) {
-        if (session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
-            config.setDepthMode(Config.DepthMode.AUTOMATIC);
+        if (session.isDepthModeSupported(this.depthMode)) {
+            config.setDepthMode(this.depthMode);
         }
         config.setUpdateMode(Config.UpdateMode.LATEST_CAMERA_IMAGE);
     }
@@ -111,8 +110,17 @@ public class MainActivity extends AppCompatActivity implements
         setContentView(R.layout.activity_main);
         getSupportFragmentManager().addFragmentOnAttachListener(this);
         menuImageView = findViewById(R.id.mainActivityMenu);
+        modelNameTextView = findViewById(R.id.modelNameTV);
+        modelImageView = findViewById(R.id.ModelPhotoIV);
+        deleteButtonIV = findViewById(R.id.deleteModelIV);
+        upInYAxisIV = findViewById(R.id.moveUPInYAxis);
+        downInYAxisIV = findViewById(R.id.moveDownInYAxisIV);
         measureButton = findViewById(R.id.distanceMeasuringButton);
+        joystick = findViewById(R.id.joystick);
 
+        modelHelper = new ModelHelper(this, getModelsList());
+        pd = new ProgressDialog(this);
+        pd.setMessage("Please wait, loading model");
         if (savedInstanceState == null) {
             if (Sceneform.isSupported(this)) {
                 getSupportFragmentManager().beginTransaction()
@@ -120,9 +128,7 @@ public class MainActivity extends AppCompatActivity implements
                         .commit();
             }
         }
-        fillModels();
-        loadModels();
-        touchHelper = new TouchHelper();
+        modelHelper.loadModel( 0);
         menuImageView.setOnClickListener(
                 v -> {
                     PopupMenu menu = new PopupMenu(this, v);
@@ -131,85 +137,41 @@ public class MainActivity extends AppCompatActivity implements
                     menu.show();
                 }
         );
-//        configureSelectedViewRenderables();
+        modelSelectingDialog = new Dialog(this);
+
+        modelSelectingDialog.setContentView(R.layout.alert_dialog_selection_view);
+        RecyclerView recyclerView = modelSelectingDialog.findViewById(R.id.alertRecylerView);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this, RecyclerView.HORIZONTAL, false);
+        ModelAdapter modelAdapter = new ModelAdapter(this, modelHelper.getModelList());
+        recyclerView.setLayoutManager(layoutManager);
+        recyclerView.setAdapter(modelAdapter);
     }
 
-    private void configureSelectedViewRenderables() {
-        WeakReference<MainActivity> weakActivity = new WeakReference<>(this);
-        final ViewRenderable[] v = new ViewRenderable[1];
-        ViewRenderable.builder()
-                .setView(this, R.layout.title_card)
-                .build()
-                .thenAccept(viewRenderable -> {
-                    MainActivity activity = weakActivity.get();
-                    if (activity != null) {
-                        v[0] = viewRenderable;
-                    }
-                })
-                .exceptionally(throwable -> {
-                    Toast.makeText(this, "Unable to load model", Toast.LENGTH_LONG).show();
-                    return null;
-                });
-
-//        selectedOne = new Node();
-//        selectedOne.setEnabled(false);
-//        selectedOne.setRenderable(v[0]);
-//        selectedTwo = new Node();
-//        selectedTwo.setEnabled(false);
-//        selectedTwo.setRenderable(v[0]);
+    private List<Model> getModelsList() {
+List<Model> models = new ArrayList<>();
+        models.add(new Model(this, "Sphere", true, SHAPE.SPHERE, R.drawable.sphere));
+        models.add(new Model(this, "Cube", true, SHAPE.CUBE, R.drawable.cube));
+        models.add(new Model(this, "Cylinder", true, SHAPE.CYLINDER, R.drawable.cylinder));
+        models.add(new Model(this, "Tiger", "https://storage.googleapis.com/ar-answers-in-search-models/static/Tiger/model.glb", -1));
+        models.add(new Model(this, "sofa", "sofa.glb", -1));
+        models.add(new Model(this, "Cabinet", "Cabinet/scene.gltf", R.drawable.cabinet));
+        models.add(new Model(this, "Bee", "Bee.glb", -1));
+        models.add(new Model(this, "desk", "desk.glb", R.drawable.desk));
+        models.add(new Model(this, "Lamp", "Lamp.glb", R.drawable.lamp));
+        models.add(new Model(this, "book", "Book.glb", -1));
+        return models;
     }
 
-    private void selectNode(TransformableNode node) {
-//        if (distanceToFindBetween == DISTANCE_TO_FIND_BETWEEN.PLANE_TO_PLANE) {
-//            Toast.makeText(this, "Select Plane not object", Toast.LENGTH_SHORT).show();
-//            selectedOne.setEnabled(false);
-//            selectedTwo.setEnabled(false);
-//            return;
-//        }
-//        else if(distanceToFindBetween == DISTANCE_TO_FIND_BETWEEN.PLANE_TO_OBJECT){
-//            selectedOne.setEnabled(false);
-//            selectedTwo.setEnabled(false);
-//            selectedOne.setParent(node);
-//            selectedOne.setEnabled(true);
-//        }
-
-        if(nodesSelected.contains(node)){
-            nodesSelected.remove(node);
-        }
-        nodesSelected.push(node);
-        node.select();
-        translationController = node.getTranslationController();
-
-//        selectedOne.setParent(second);
-//        selectedOne.setLocalPosition(new Vector3(0, 0.1f, 0));
-//        selectedOne.setEnabled(true);
-//        if (first != null) {
-//            second.select();
-//            first.select();
-//            selectedTwo.setParent(second);
-//            selectedTwo.setLocalPosition(new Vector3(0, 0.1f, 0));
-//            selectedTwo.setEnabled(true);
-//        }
+    public void showModelButtons(boolean enable) {
+        deleteButtonIV.setVisibility(enable ? View.VISIBLE : View.GONE);
+        downInYAxisIV.setVisibility(enable ? View.VISIBLE : View.GONE);
+        upInYAxisIV.setVisibility(enable ? View.VISIBLE : View.GONE);
+        joystick.setVisibility(enable ? View.VISIBLE : View.GONE);
     }
 
     private void selectPlane(Plane plane) {
         if (planeList.isEmpty() || !planeList.peek().equals(plane))
             planeList.push(plane);
-    }
-
-    public void changeModelDistanceFromGround (View view){
-        if(nodesSelected.isEmpty()){
-                Toast.makeText(this, "Select a node", Toast.LENGTH_SHORT).show();
-                return;
-        }
-        TransformableNode node = nodesSelected.peek();
-        Vector3 pos = node.getLocalPosition();
-        if(view.getId() == R.id.decreaseSizeIV){
-            pos.y -= 0.1;
-        }else{
-            pos.y += 0.1;
-        }
-        node.setLocalPosition(pos);
     }
 
     private float measureObjectToObjectDistance(Vector3 startPose, Vector3 endPose) {
@@ -245,6 +207,7 @@ public class MainActivity extends AppCompatActivity implements
 
     public void checkDistance(View view) {
         String result = "";
+        Stack<TransformableNode> nodesSelected = modelHelper.getNodesSelected();
 
         switch (distanceToFindBetween) {
             case OBJECT_TO_OBJECT:
@@ -296,16 +259,42 @@ public class MainActivity extends AppCompatActivity implements
 
     }
 
+    public void moveModel(int angle , int strength){
+        TransformableNode node = modelHelper.getNodesSelected().peek();
+        //TODO: This needs some calibration this is not perfect.
+            double a = Math.toRadians(angle);
+            Vector3 cameraPosition = arSceneView.getScene().getCamera().getLocalPosition();
+            double str = strength * 0.0001;
+            Vector3 position = node.getLocalPosition();
+            cameraPosition = Vector3.subtract(position, cameraPosition);
 
+            //Get the angle of the camera and move the object according to that angle this needs calibration the most.
+            a += Math.acos(Math.sqrt(cameraPosition.x * cameraPosition.x / (cameraPosition.x * cameraPosition.x + cameraPosition.z * cameraPosition.z))) + Math.toRadians(-90);
+
+            position.x += str * Math.cos(a);
+            position.z -= str * Math.sin(a);
+        node.setLocalPosition(position);
+    }
+    public void moveModelInYAxis(View view){
+        TransformableNode node = modelHelper.getNodesSelected().peek();
+        Vector3 position =node.getLocalPosition();
+        if(view.getId() == R.id.moveDownInYAxisIV){
+            position.y -= 0.01f;
+        }else {
+            position.y += 0.01f;
+        }
+        node.setLocalPosition(position);
+    }
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+
+        measureButton.setVisibility(View.GONE);
+        distanceToFindBetween = DISTANCE_TO_FIND_BETWEEN.OBJECT_TO_OBJECT;
+        checkingDistance = false;
 
         switch (item.getItemId()) {
 
             case R.id.models_option:
-                measureButton.setVisibility(View.GONE);
-                distanceToFindBetween = DISTANCE_TO_FIND_BETWEEN.OBJECT_TO_OBJECT;
-                checkingDistance = false;
                 launchModelsSelectionMenuDialog();
                 return true;
             case R.id.find_distance:
@@ -313,58 +302,47 @@ public class MainActivity extends AppCompatActivity implements
                 checkingDistance = true;
                 launchDistanceSelectionMenuDialog();
                 return true;
-//            case R.id.mewtwoMenuItem:
-//                this.uri = models.get("mewtwo");
-//                shapeSelected = false;
-//                loadModels();
-//                Toast.makeText(this, "mewtwo selected", Toast.LENGTH_SHORT).show();
-//                return true;
-//            case R.id.tigerMenuItem:
-//                this.uri = models.get("tiger");
-//                shapeSelected = false;
-//                loadModels();
-//                Toast.makeText(this, "tiger selected", Toast.LENGTH_SHORT).show();
-//                return true;
-//            case R.id.sofaMenuItem:
-//                this.uri = models.get("sofa");
-//                shapeSelected = false;
-//                loadModels();
-//                Toast.makeText(this, "sofa selected", Toast.LENGTH_SHORT).show();
-//                return true;
-//            case R.id.woodentable:
-//                this.uri = models.get("woodentable");
-//                shapeSelected = false;
-//                loadModels();
-//                Toast.makeText(this, "wooden table selected", Toast.LENGTH_SHORT).show();
-//                return true;
-//            case R.id.cube:
-//                this.shapeForm = SHAPE.CUBE;
-//                makeObject();
-//                shapeSelected = true;
-//                Toast.makeText(this, "cube selected", Toast.LENGTH_SHORT).show();
-//                return true;
-//            case R.id.Cylinder:
-//                this.shapeForm = SHAPE.CYLINDER;
-//                makeObject();
-//                shapeSelected = true;
-//                Toast.makeText(this, "Cylinder selected", Toast.LENGTH_SHORT).show();
-//                return true;
-//            case R.id.Sphere:
-//                this.shapeForm = SHAPE.SPHERE;
-//                makeObject();
-//                shapeSelected = true;
-//                Toast.makeText(this, "Sphere selected", Toast.LENGTH_SHORT).show();
-//                return true;
+            case R.id.changeDepthMode:
+                launchChangeDepthModeSelectionMenuDialog();
+                return true;
+            case R.id.togglePlacementOverObject:
+                modelHelper.setPlaceObjectOverObject(!modelHelper.isPlaceObjectOverObject());
+                Toast.makeText(this, "Placement over object set to " + modelHelper.isPlaceObjectOverObject(), Toast.LENGTH_SHORT).show();
+                return true;
 
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
 
+    private void launchChangeDepthModeSelectionMenuDialog() {
+        new AlertDialog.Builder(this)
+                .setSingleChoiceItems(depthModes, checkedItemInDepthMode, (dialog, which) -> {
+                    String depth = "D";
+                    switch (which) {
+                        case 0: depthMode = Config.DepthMode.RAW_DEPTH_ONLY;
+                        depth = "R";
+                            break;
+
+                        case 1: depthMode = Config.DepthMode.AUTOMATIC;
+                        depth = "A";
+                            break;
+
+                        case 2 : depthMode = Config.DepthMode.DISABLED;
+                    }
+                    SharedPreferences.Editor editor = getPreferences(MODE_PRIVATE).edit();
+                    editor.putString("DepthMode", depth);
+                    editor.commit();
+                    editor.apply();
+                    Toast.makeText(this, "Please Restart the app to see changes", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                }).create().show();
+    }
+
     private void launchDistanceSelectionMenuDialog() {
         Toast.makeText(this, "You might not be able to place objects while in this mode. If you want to change the distance please select model from menu.  ", Toast.LENGTH_LONG).show();
         new AlertDialog.Builder(this)
-                .setSingleChoiceItems(distanceBetweenArray, checkedItemInDistanceBetweenArray, (dialog, which) -> {
+                .setSingleChoiceItems(distanceBetweenArray, checkedItemInDepthMode, (dialog, which) -> {
                     switch (distanceBetweenArray[which].toString()) {
                         case "Object to Object":
                             distanceToFindBetween = DISTANCE_TO_FIND_BETWEEN.OBJECT_TO_OBJECT;
@@ -382,82 +360,36 @@ public class MainActivity extends AppCompatActivity implements
     }
 
     private void launchModelsSelectionMenuDialog() {
-        new AlertDialog.Builder(this)
-                .setTitle("Select Models")
-                .setSingleChoiceItems(modelNameArray, checkedItemInModelNameArray, (dialog, which) -> {
-                    checkedItemInModelNameArray = which;
-                    this.uri = models.get(modelNameArray[which]);
-                    switch (modelNameArray[which].toString()) {
-                        case "Sphere":
-                            this.shapeForm = SHAPE.SPHERE;
-                            shapeSelected = true;
-                            break;
-                        case "Cube":
-                            this.shapeForm = SHAPE.CUBE;
-                            shapeSelected = true;
-                            break;
-                        case "Cylinder":
-                            this.shapeForm = SHAPE.CYLINDER;
-                            shapeSelected = true;
-                            break;
-                        default:
-                            shapeSelected = false;
-                    }
-                    loadModels();
-                    dialog.dismiss();
-                }).create().show();
+
+
+        modelSelectingDialog.show();
+
     }
     public void deleteModel(View view){
-        if(nodesSelected.isEmpty()) return;
-        AnchorNode node;
-        Node n =  nodesSelected.pop().getParent();
-        if(n instanceof AnchorNode) {
-            node = (AnchorNode) n;
-            node.getAnchor().detach();
+        Stack<TransformableNode> nodesSelected = modelHelper.getNodesSelected();
+        if(nodesSelected.isEmpty()) {
+            Toast.makeText(this, "No node selected", Toast.LENGTH_SHORT).show();
+            return;
         }
-        if(!(n instanceof Camera) && !(n instanceof Sun)){
+        AnchorNode node;
+        TransformableNode nodeToBeDeleted = nodesSelected.pop();
+        nodesSelected.clear();
+        showModelButtons(false);
+        Node n =  nodeToBeDeleted.getParent();
+        assert n != null;
+        if(n instanceof AnchorNode) {
+            Log.d("Delete Model", "deleteModel: Anchor node");
+            node = (AnchorNode) n;
+            Objects.requireNonNull(node.getAnchor()).detach();
+        }
+        if(n instanceof TransformableNode){
+            Log.d("Delete Model", "deleteModel: Transformable node");
+            nodeToBeDeleted.setParent(null);
+        }
+        else if(!(n instanceof Camera) && !(n instanceof Sun)){
+            Log.d("Delete Model", "deleteModel: Other node");
             n.setParent(null);
         }
-    }
-
-    private void fillModels() {
-        this.models = new HashMap<>();
-
-        models.put("mewtwo", "mewtwo.glb");
-        models.put("tiger", "https://storage.googleapis.com/ar-answers-in-search-models/static/Tiger/model.glb");
-        models.put("sofa", "sofa.glb");
-        models.put("woodentable", "woodentable/scene.gltf");
-        models.put("Sphere", "");
-        models.put("Cube", "");
-        models.put("Cylinder", "");
-        models.put("Cabinet", "Cabinet/scene.gltf");
-        models.put("Cabinet 2" , "otherCabinet/scene.gltf");
-//        models.put("3Model","3M/3_model.glb");
-//        models.put("3_model (1)", "3M/3_model (1).gltf");
-        modelNameArray = new CharSequence[models.size()];
-        System.arraycopy(models.keySet().toArray(modelNameArray), 0, modelNameArray, 0, models.size());
-        this.shapeForm = SHAPE.SPHERE;
-        makeObject();
-    }
-
-    private void makeObject() {
-        WeakReference<MainActivity> weakActivity = new WeakReference<>(this);
-        MaterialFactory.makeOpaqueWithColor(this, new Color(android.graphics.Color.RED))
-                .thenAccept(material -> {
-                    MainActivity activity = weakActivity.get();
-                    if (activity != null)
-                        switch (activity.shapeForm) {
-                            case CUBE:
-                                activity.model = ShapeFactory.makeCube(new Vector3(0.1f, 0.1f, 0.1f), new Vector3(0f, 0.1f, 0f), material);
-                                return;
-                            case SPHERE:
-                                activity.model = ShapeFactory.makeSphere(0.1f, new Vector3(0f, 0.1f, 0f), material);
-                                return;
-                            default:
-                                activity.model = ShapeFactory.makeCylinder(0.1f, 0.05f, new Vector3(0f, 0.025f, 0f), material);
-                        }
-                });
-
     }
 
     @Override
@@ -468,6 +400,7 @@ public class MainActivity extends AppCompatActivity implements
             arFragment.setOnViewCreatedListener(this);
             arFragment.setOnSessionConfigurationListener(this);
         }
+
     }
 
     @Override
@@ -481,88 +414,44 @@ public class MainActivity extends AppCompatActivity implements
                             .build(EngineInstance.getEngine().getFilamentEngine())
             );
         }
-/*
+        this.arSceneView = arSceneView;
         arSceneView.getCameraStream()
-                .setDepthOcclusionMode(CameraStream.DepthOcclusionMode.DEPTH_OCCLUSION_ENABLED);*/
+                .setDepthOcclusionMode(CameraStream.DepthOcclusionMode.DEPTH_OCCLUSION_ENABLED);
+        joystick.setOnMoveListener(this::moveModel);
 
     }
-
-    public void loadModels() {
-        WeakReference<MainActivity> weakActivity = new WeakReference<>(this);
-        if (shapeSelected) makeObject();
-        else
-            ModelRenderable.builder()
-                    .setSource(this, Uri.parse(this.uri))
-                    .setIsFilamentGltf(true)
-                    .setAsyncLoadEnabled(true)
-                    .build()
-                    .thenAccept(model -> {
-                        MainActivity activity = weakActivity.get();
-                        if (activity != null) {
-                            activity.model = model;
-                        }
-                    })
-                    .exceptionally(throwable -> {
-                        Toast.makeText(this, "Unable to load model", Toast.LENGTH_LONG).show();
-                        return null;
-                    });
-        ViewRenderable.builder()
-                .setView(this, R.layout.title_card)
-                .build()
-                .thenAccept(viewRenderable -> {
-                    MainActivity activity = weakActivity.get();
-                    if (activity != null) {
-                        activity.viewRenderable = viewRenderable;
-                    }
-                })
-                .exceptionally(throwable -> {
-                    Toast.makeText(this, "Unable to load model", Toast.LENGTH_LONG).show();
-                    return null;
-                });
-    }
-
     @Override
     public void onTapPlane(HitResult hitResult, Plane plane, MotionEvent motionEvent) {
 
         if (!checkingDistance) {
-            if (model == null || viewRenderable == null) {
-                Toast.makeText(this, "Loading..." + model + viewRenderable, Toast.LENGTH_SHORT).show();
+            if (model == null) {
+                Toast.makeText(this, "Select Model" + model, Toast.LENGTH_SHORT).show();
                 return;
             }
-
             try{// Create the Anchor.
                 Anchor anchor = hitResult.createAnchor();
                 AnchorNode anchorNode = new AnchorNode(anchor);
                 anchorNode.setParent(arFragment.getArSceneView().getScene());
+                modelHelper.PlaceModel(/*parent*/anchorNode);
 
-                // Create the transformable model and add it to the anchor.
-                TransformableNode model = new TransformableNode(arFragment.getTransformationSystem());
-                model.setParent(anchorNode);
-                model.setRenderable(this.model);
-//            Objects.requireNonNull(model.getRenderableInstance()).animate(true).start();
-                model.select();
-                model.setOnTouchListener((hitTestResult, ev) -> {
-                    if (touchHelper.triggerEvent(ev)) selectNode(model);
-                    return true;
-                });
-                if(this.uri != null && this.uri.contains("wooden")) {
-                    Toast.makeText(this, this.uri, Toast.LENGTH_SHORT).show();
-                    model.getScaleController().setMaxScale(0.05f);
-                    model.getScaleController().setMinScale(0.01f);
-                }
             }catch (Exception e){
                 Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
             }
-
         } else {
             selectPlane(plane);
         }
-        /*Node tigerTitleNode = new Node();
-        tigerTitleNode.setParent(model);
-        tigerTitleNode.setEnabled(false);
-        tigerTitleNode.setLocalPosition(new Vector3(0.0f, 0.01f, 0.0f));
-        tigerTitleNode.setRenderable(viewRenderable);
-        tigerTitleNode.setEnabled(true);
-        loadModels();*/
+    }
+
+    @Override
+    protected void onResume() {
+        SharedPreferences preferences = getPreferences(MODE_PRIVATE);
+        switch (preferences.getString("DepthMode", "D")){
+            case "A" : this.depthMode = Config.DepthMode.AUTOMATIC; checkedItemInDepthMode = 0;break;
+            case "R" : this.depthMode = Config.DepthMode.RAW_DEPTH_ONLY;
+            checkedItemInDepthMode = 1; break;
+            default : this.depthMode = Config.DepthMode.DISABLED;
+            checkedItemInDepthMode = 2;
+        }
+        super.onResume();
     }
 }

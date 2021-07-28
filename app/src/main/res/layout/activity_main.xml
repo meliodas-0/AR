@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context=".MainActivity">
 
     <androidx.fragment.app.FragmentContainerView
@@ -11,43 +12,99 @@
         android:id="@+id/arFragment"
         />
 
-    <ImageView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/mainActivityMenu"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentTop="true"
-        android:layout_margin="20.0dp"
-        android:src="@drawable/ic_menu" />
+        android:orientation="horizontal"
+        android:layout_centerHorizontal="true"
+        android:id="@+id/headerLinearLayout"
+        android:background="@drawable/linear_layout_bg"
+        >
+
+        <TextView
+            android:id="@+id/modelNameTV"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:maxLines="1"
+            android:text="@string/select_model_from_menu_icon"
+            android:textColor="@color/white" />
+        <de.hdodenhof.circleimageview.CircleImageView
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:id="@+id/ModelPhotoIV"
+            android:layout_weight="0"
+            android:src="@drawable/cube"
+            app:civ_border_width="3dp"
+            app:civ_border_color="@color/white"
+            android:visibility="gone"
+            android:layout_gravity="center"
+        />
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/mainActivityMenu"
+            android:layout_weight="0"
+            android:layout_margin="20.0dp"
+            android:src="@drawable/ic_baseline_menu_24"
+            android:contentDescription="Menu Button" />
+    </LinearLayout>
     <ImageView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/deleteModelIV"
         android:layout_alignParentEnd="true"
-        android:layout_below="@id/mainActivityMenu"
+        android:layout_below="@id/headerLinearLayout"
         android:layout_margin="10.0dp"
-        android:src="@android:drawable/ic_delete"
+        android:src="@android:drawable/ic_menu_delete"
         android:onClick="deleteModel"
-        /><ImageView
-    android:layout_width="50.0dp"
-    android:layout_height="50.0dp"
-    android:layout_centerVertical="true"
-    android:id="@+id/increaseSizeIV"
-    android:layout_alignParentEnd="true"
-    android:layout_marginEnd="10.0dp"
-    android:src="@android:drawable/arrow_up_float"
-    android:onClick="changeModelDistanceFromGround"
-    />
+        android:visibility="gone"
+        />
     <ImageView
-    android:layout_width="50.0dp"
-    android:layout_height="50.0dp"
-    android:id="@+id/decreaseSizeIV"
-    android:layout_alignParentEnd="true"
-    android:layout_margin="10.0dp"
-        android:layout_marginTop="30.0dp"
-        android:layout_below="@id/increaseSizeIV"
-    android:src="@android:drawable/arrow_down_float"
-    android:onClick="changeModelDistanceFromGround"
+        android:id="@+id/moveUPInYAxis"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="-7dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="94dp"
+        android:layout_marginBottom="50dp"
+        android:layout_toEndOf="@+id/joystick"
+        android:onClick="moveModelInYAxis"
+        android:visibility="gone"
+        android:src="@drawable/ic_baseline_arrow_upward_24" />
+
+    <ImageView
+        android:id="@+id/moveDownInYAxisIV"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="81dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginEnd="-7dp"
+        android:layout_marginBottom="50dp"
+        android:layout_toStartOf="@+id/joystick"
+        android:onClick="moveModelInYAxis"
+        android:visibility="gone"
+        android:src="@drawable/ic_baseline_arrow_downward_24" />
+<io.github.controlwear.virtual.joystick.android.JoystickView
+    xmlns:custom="http://schemas.android.com/apk/res-auto"
+    android:layout_height="100dp"
+    android:layout_width="100dp"
+    custom:JV_buttonSizeRatio="15%"
+    android:layout_alignParentBottom="true"
+    android:layout_centerHorizontal="true"
+    android:layout_margin="10dp"
+    android:id="@+id/joystick"
+    custom:JV_borderWidth="4dp"
+    custom:JV_borderColor="#00796B"
+    custom:JV_buttonColor="#FF6E40"
+    custom:JV_backgroundColor="#009688"
+    android:background="@android:color/transparent"
+    android:visibility="gone"
     />
 
     <Button
