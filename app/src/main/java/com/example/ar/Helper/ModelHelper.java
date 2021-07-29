@@ -1,21 +1,28 @@
 package com.example.ar.Helper;
 
 import android.content.Context;
+import android.util.Log;
+import android.view.View;
+import android.widget.Toast;
 
 import com.example.ar.MainActivity;
+import com.example.ar.R;
 import com.google.ar.sceneform.AnchorNode;
+import com.google.ar.sceneform.Camera;
 import com.google.ar.sceneform.Node;
+import com.google.ar.sceneform.Sun;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.ux.TransformableNode;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Stack;
 
 public class ModelHelper {
     private final List<Model> modelList;
-private  final Context mContext;
-private boolean placeObjectOverObject = false;
-private final TouchHelper touchHelper;
+    private  final Context mContext;
+    private boolean placeObjectOverObject = false;
+    private final TouchHelper touchHelper;
     private final SnackbarHelper snackbarHelper;
     private final Stack<TransformableNode> nodesSelected;
     private boolean firstTimeChildSelected;
@@ -97,15 +104,6 @@ private final TouchHelper touchHelper;
         return node instanceof AnchorNode;
     }
 
-    public CharSequence[] getModelsNameList(){
-        CharSequence[] list = new CharSequence[modelList.size()];
-        for(int i = 0; i<modelList.size(); i++){
-            Model model = modelList.get(i);
-            list[i] = model.getName();
-        }
-        return  list;
-    }
-
     public boolean isPlaceObjectOverObject() {
         return placeObjectOverObject;
     }
@@ -116,5 +114,41 @@ private final TouchHelper touchHelper;
 
     public Stack<TransformableNode> getNodesSelected() {
         return nodesSelected;
+    }
+
+    public void deleteModel(){
+        if(nodesSelected.isEmpty()) {
+            Toast.makeText(mContext, "No node selected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        AnchorNode node;
+        TransformableNode nodeToBeDeleted = nodesSelected.pop();
+        nodesSelected.clear();
+        ((MainActivity)mContext).showModelButtons(false);
+        Node n =  nodeToBeDeleted.getParent();
+        assert n != null;
+        if(n instanceof AnchorNode) {
+            Log.d("Delete Model", "deleteModel: Anchor node");
+            node = (AnchorNode) n;
+            Objects.requireNonNull(node.getAnchor()).detach();
+        }
+        if(n instanceof TransformableNode){
+            Log.d("Delete Model", "deleteModel: Transformable node");
+            nodeToBeDeleted.setParent(null);
+        }
+        else if(!(n instanceof Camera) && !(n instanceof Sun)){
+            Log.d("Delete Model", "deleteModel: Other node");
+            n.setParent(null);
+        }
+    }
+    public void moveModelInYAxis(View view){
+        TransformableNode node = getNodesSelected().peek();
+        Vector3 position =node.getLocalPosition();
+        if(view.getId() == R.id.moveDownInYAxisIV){
+            position.y -= 0.01f;
+        }else {
+            position.y += 0.01f;
+        }
+        node.setLocalPosition(position);
     }
 }

@@ -23,6 +23,9 @@ import androidx.fragment.app.FragmentOnAttachListener;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.ar.Helper.DistanceHelper;
+import com.example.ar.Helper.Enums.DISTANCE_TO_FIND_BETWEEN;
+import com.example.ar.Helper.JoystickHelper;
 import com.example.ar.Helper.Model;
 import com.example.ar.Helper.ModelAdapter;
 import com.example.ar.Helper.ModelHelper;
@@ -32,7 +35,6 @@ import com.google.ar.core.Anchor;
 import com.google.ar.core.Config;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
-import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
 import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.ArSceneView;
@@ -65,35 +67,31 @@ public class MainActivity extends AppCompatActivity implements
     public ArFragment arFragment;
     public Renderable model;
     public int modelNumber;
+
     public TextView modelNameTextView;
     public CircleImageView modelImageView;
-    private ImageView menuImageView, deleteButtonIV, upInYAxisIV, downInYAxisIV;
-    private ArSceneView arSceneView;
-
+    private ImageView deleteButtonIV;
+    private ImageView upInYAxisIV;
+    private ImageView downInYAxisIV;
     public ProgressDialog pd;
     private JoystickView joystick;
     public Dialog modelSelectingDialog;
+    public Button measureButton;
+    /*THESE ARE FOR SELECTION DIALOG BOXES GIVEN BELOW*/
     private final CharSequence[] distanceBetweenArray = new CharSequence[]{"Object to Object", "Plane to object", "Plane to plane"};
     private final CharSequence[] depthModes = new CharSequence[]{"Raw Depth", "Automatic ", "Disabled"};
 
     private int checkedItemInDepthMode;
-
-    private final Stack<Plane> planeList = new Stack<>();
-
-    private Button measureButton;
-
-    private DISTANCE_TO_FIND_BETWEEN distanceToFindBetween = DISTANCE_TO_FIND_BETWEEN.OBJECT_TO_OBJECT;
+    private int checkedItemInDistanceMode = -1;
     private boolean checkingDistance = false;
 
+    public final Stack<Plane> planeStack = new Stack<>();
+
+    private DistanceHelper distanceHelper;
     public ModelHelper modelHelper;
+    private JoystickHelper joystickHelper;
+
     private Config.DepthMode depthMode = Config.DepthMode.DISABLED;
-
-    private enum DISTANCE_TO_FIND_BETWEEN {
-        OBJECT_TO_OBJECT,
-        PLANE_TO_OBJECT,
-        PLANE_TO_PLANE
-
-    }
 
     @Override
     public void onSessionConfiguration(Session session, Config config) {
@@ -108,19 +106,6 @@ public class MainActivity extends AppCompatActivity implements
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
-        getSupportFragmentManager().addFragmentOnAttachListener(this);
-        menuImageView = findViewById(R.id.mainActivityMenu);
-        modelNameTextView = findViewById(R.id.modelNameTV);
-        modelImageView = findViewById(R.id.ModelPhotoIV);
-        deleteButtonIV = findViewById(R.id.deleteModelIV);
-        upInYAxisIV = findViewById(R.id.moveUPInYAxis);
-        downInYAxisIV = findViewById(R.id.moveDownInYAxisIV);
-        measureButton = findViewById(R.id.distanceMeasuringButton);
-        joystick = findViewById(R.id.joystick);
-
-        modelHelper = new ModelHelper(this, getModelsList());
-        pd = new ProgressDialog(this);
-        pd.setMessage("Please wait, loading model");
         if (savedInstanceState == null) {
             if (Sceneform.isSupported(this)) {
                 getSupportFragmentManager().beginTransaction()
@@ -128,7 +113,27 @@ public class MainActivity extends AppCompatActivity implements
                         .commit();
             }
         }
+        /*Initializers*/
+        getSupportFragmentManager().addFragmentOnAttachListener(this);
+        ImageView menuImageView = findViewById(R.id.mainActivityMenu);
+        modelNameTextView = findViewById(R.id.modelNameTV);
+        modelImageView = findViewById(R.id.ModelPhotoIV);
+        deleteButtonIV = findViewById(R.id.deleteModelIV);
+        upInYAxisIV = findViewById(R.id.moveUPInYAxis);
+        downInYAxisIV = findViewById(R.id.moveDownInYAxisIV);
+        measureButton = findViewById(R.id.distanceMeasuringButton);
+        joystick = findViewById(R.id.joystick);
+        distanceHelper = new DistanceHelper(this);
+
+        modelHelper = new ModelHelper(this, /*Models*/getModelsList());
+        joystickHelper = new JoystickHelper(this);
+        pd = new ProgressDialog(this);
         modelHelper.loadModel( 0);
+        pd.setMessage("Please wait, loading model");
+        setModelDialogBox();
+
+        /*OnclickListeners*/
+        measureButton.setOnClickListener(view -> distanceHelper.checkDistance());
         menuImageView.setOnClickListener(
                 v -> {
                     PopupMenu menu = new PopupMenu(this, v);
@@ -137,6 +142,14 @@ public class MainActivity extends AppCompatActivity implements
                     menu.show();
                 }
         );
+        deleteButtonIV.setOnClickListener(view -> modelHelper.deleteModel());
+        upInYAxisIV.setOnClickListener(view ->
+                modelHelper.moveModelInYAxis(view));
+        downInYAxisIV.setOnClickListener(view ->
+                modelHelper.moveModelInYAxis(view));
+    }
+/* SETTING ALL THE PARAMETERS FOR THE MODELS DIALOG*/
+    private void setModelDialogBox() {
         modelSelectingDialog = new Dialog(this);
 
         modelSelectingDialog.setContentView(R.layout.alert_dialog_selection_view);
@@ -146,7 +159,7 @@ public class MainActivity extends AppCompatActivity implements
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setAdapter(modelAdapter);
     }
-
+//TODO: add models from online catalog.
     private List<Model> getModelsList() {
 List<Model> models = new ArrayList<>();
         models.add(new Model(this, "Sphere", true, SHAPE.SPHERE, R.drawable.sphere));
@@ -161,135 +174,26 @@ List<Model> models = new ArrayList<>();
         models.add(new Model(this, "book", "Book.glb", -1));
         return models;
     }
-
+/*CONTROL BUTTONS OF THE MODEL*/
     public void showModelButtons(boolean enable) {
         deleteButtonIV.setVisibility(enable ? View.VISIBLE : View.GONE);
         downInYAxisIV.setVisibility(enable ? View.VISIBLE : View.GONE);
         upInYAxisIV.setVisibility(enable ? View.VISIBLE : View.GONE);
         joystick.setVisibility(enable ? View.VISIBLE : View.GONE);
     }
-
+/*USED TO SELECT PLANE WHOSE DISTANCE TO BE CALCULATED.*/
     private void selectPlane(Plane plane) {
-        if (planeList.isEmpty() || !planeList.peek().equals(plane))
-            planeList.push(plane);
+        if (planeStack.isEmpty() || !planeStack.peek().equals(plane))
+            planeStack.push(plane);
     }
 
-    private float measureObjectToObjectDistance(Vector3 startPose, Vector3 endPose) {
-        float distance;
-        float dx = startPose.x - endPose.x;
-        float dy = startPose.y - endPose.y;
-        float dz = startPose.z - endPose.z;
+    /*Menu Options Launcher*/
 
-        distance = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
-        return distance;
-    }
-
-    private float measureObjectToPlaneDistance(Vector3 objectPose, Pose planePose) {
-
-        float distance;
-        float dx = objectPose.x - planePose.tx();
-        float dy = objectPose.y - planePose.ty();
-        float dz = objectPose.z - planePose.tz();
-
-        distance = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
-        return distance;
-    }
-
-    private float measurePlaneToPlaneDistance(Pose plane1pose, Pose plane2Pose) {
-        float distance;
-        float dx = plane1pose.tx() - plane2Pose.tx();
-        float dy = plane1pose.ty() - plane2Pose.ty();
-        float dz = plane1pose.tz() - plane2Pose.tz();
-
-        distance = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
-        return distance;
-    }
-
-    public void checkDistance(View view) {
-        String result = "";
-        Stack<TransformableNode> nodesSelected = modelHelper.getNodesSelected();
-
-        switch (distanceToFindBetween) {
-            case OBJECT_TO_OBJECT:
-                if (nodesSelected.size() < 2) {
-                    result = "Select two nodes";
-                } else {
-                    TransformableNode first = nodesSelected.pop();
-                    float distance = measureObjectToObjectDistance(first.getWorldPosition(), nodesSelected.peek().getWorldPosition());
-                    nodesSelected.push(first);
-                    result = "distance between Objects is" + distance + "m";
-
-                }
-                break;
-            case PLANE_TO_PLANE:
-                if (planeList.size() < 2) result = "Select Two Planes.";
-                else {
-                    Plane plane1 = planeList.pop();
-                    Plane plane2 = planeList.peek();
-                    planeList.add(plane1);
-                    result = "Distance between planes is : " + measurePlaneToPlaneDistance(plane1.getCenterPose(), plane2.getCenterPose()) + "m";
-                }
-                break;
-            case PLANE_TO_OBJECT:
-                if (planeList.isEmpty() || !nodesSelected.isEmpty())
-                    result = "Either plane or object is not selected.";
-                else {
-                    result = "Distance : " + measureObjectToPlaneDistance(nodesSelected.peek().getLocalPosition(), planeList.peek().getCenterPose()) + "m";
-                }
-        }
-
-        Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
-    }
-
-    public void changeMeasurementTargets() {
-//        Intent intent = new Intent(this, GLSurfaceActivity.class);
-//        startActivity(intent);
-
-        switch (distanceToFindBetween) {
-            case OBJECT_TO_OBJECT:
-                measureButton.setText(R.string.object_to_object_distance);
-                break;
-            case PLANE_TO_OBJECT:
-                measureButton.setText(R.string.object_to_plane_distance);
-                break;
-            case PLANE_TO_PLANE:
-                measureButton.setText(R.string.plane_to_plane_distance);
-                break;
-        }
-
-    }
-
-    public void moveModel(int angle , int strength){
-        TransformableNode node = modelHelper.getNodesSelected().peek();
-        //TODO: This needs some calibration this is not perfect.
-            double a = Math.toRadians(angle);
-            Vector3 cameraPosition = arSceneView.getScene().getCamera().getLocalPosition();
-            double str = strength * 0.0001;
-            Vector3 position = node.getLocalPosition();
-            cameraPosition = Vector3.subtract(position, cameraPosition);
-
-            //Get the angle of the camera and move the object according to that angle this needs calibration the most.
-            a += Math.acos(Math.sqrt(cameraPosition.x * cameraPosition.x / (cameraPosition.x * cameraPosition.x + cameraPosition.z * cameraPosition.z))) + Math.toRadians(-90);
-
-            position.x += str * Math.cos(a);
-            position.z -= str * Math.sin(a);
-        node.setLocalPosition(position);
-    }
-    public void moveModelInYAxis(View view){
-        TransformableNode node = modelHelper.getNodesSelected().peek();
-        Vector3 position =node.getLocalPosition();
-        if(view.getId() == R.id.moveDownInYAxisIV){
-            position.y -= 0.01f;
-        }else {
-            position.y += 0.01f;
-        }
-        node.setLocalPosition(position);
-    }
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
 
         measureButton.setVisibility(View.GONE);
-        distanceToFindBetween = DISTANCE_TO_FIND_BETWEEN.OBJECT_TO_OBJECT;
+        distanceHelper.setDistanceToFindBetween(DISTANCE_TO_FIND_BETWEEN.OBJECT_TO_OBJECT);
         checkingDistance = false;
 
         switch (item.getItemId()) {
@@ -342,19 +246,19 @@ List<Model> models = new ArrayList<>();
     private void launchDistanceSelectionMenuDialog() {
         Toast.makeText(this, "You might not be able to place objects while in this mode. If you want to change the distance please select model from menu.  ", Toast.LENGTH_LONG).show();
         new AlertDialog.Builder(this)
-                .setSingleChoiceItems(distanceBetweenArray, checkedItemInDepthMode, (dialog, which) -> {
+                .setSingleChoiceItems(distanceBetweenArray, checkedItemInDistanceMode, (dialog, which) -> {
                     switch (distanceBetweenArray[which].toString()) {
                         case "Object to Object":
-                            distanceToFindBetween = DISTANCE_TO_FIND_BETWEEN.OBJECT_TO_OBJECT;
+                            distanceHelper.setDistanceToFindBetween(DISTANCE_TO_FIND_BETWEEN.OBJECT_TO_OBJECT);
                             break;
                         case "Plane to object":
-                            distanceToFindBetween = DISTANCE_TO_FIND_BETWEEN.PLANE_TO_OBJECT;
+                            distanceHelper.setDistanceToFindBetween(DISTANCE_TO_FIND_BETWEEN.PLANE_TO_OBJECT);
                             break;
                         case "Plane to plane":
-                            distanceToFindBetween = DISTANCE_TO_FIND_BETWEEN.PLANE_TO_PLANE;
+                            distanceHelper.setDistanceToFindBetween(DISTANCE_TO_FIND_BETWEEN.PLANE_TO_PLANE);
                             break;
                     }
-                    changeMeasurementTargets();
+                    distanceHelper.changeMeasurementTargets();
                     dialog.dismiss();
                 }).create().show();
     }
@@ -365,32 +269,6 @@ List<Model> models = new ArrayList<>();
         modelSelectingDialog.show();
 
     }
-    public void deleteModel(View view){
-        Stack<TransformableNode> nodesSelected = modelHelper.getNodesSelected();
-        if(nodesSelected.isEmpty()) {
-            Toast.makeText(this, "No node selected", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        AnchorNode node;
-        TransformableNode nodeToBeDeleted = nodesSelected.pop();
-        nodesSelected.clear();
-        showModelButtons(false);
-        Node n =  nodeToBeDeleted.getParent();
-        assert n != null;
-        if(n instanceof AnchorNode) {
-            Log.d("Delete Model", "deleteModel: Anchor node");
-            node = (AnchorNode) n;
-            Objects.requireNonNull(node.getAnchor()).detach();
-        }
-        if(n instanceof TransformableNode){
-            Log.d("Delete Model", "deleteModel: Transformable node");
-            nodeToBeDeleted.setParent(null);
-        }
-        else if(!(n instanceof Camera) && !(n instanceof Sun)){
-            Log.d("Delete Model", "deleteModel: Other node");
-            n.setParent(null);
-        }
-    }
 
     @Override
     public void onAttachFragment(@NonNull FragmentManager fragmentManager, @NonNull Fragment fragment) {
@@ -398,10 +276,15 @@ List<Model> models = new ArrayList<>();
             arFragment = (ArFragment) fragment;
             arFragment.setOnTapArPlaneListener(this);
             arFragment.setOnViewCreatedListener(this);
+            /*NECESSARY TO ENABLE ANY DEPTH MODE.*/
             arFragment.setOnSessionConfigurationListener(this);
         }
 
     }
+
+    /*THIS METHOD WILL INITIALISE THE APP
+    * RENDERER WILL BE ATTACHED WILL COLOR GRADING
+    * HERE ColorGrading.ToneMapping should be LINEAR or FILMIC for better results*/
 
     @Override
     public void onViewCreated(ArFragment arFragment, ArSceneView arSceneView) {
@@ -414,15 +297,20 @@ List<Model> models = new ArrayList<>();
                             .build(EngineInstance.getEngine().getFilamentEngine())
             );
         }
-        this.arSceneView = arSceneView;
+        /*This line will try to set the model according to the depth of the model
+        * according the environment.
+        * If the depthMode is set to Config.DepthMode.Disabled this will not work because depth will not be capture hence will not render any difference.
+        * Use this with Config.DepthMode.AUTOMATIC or Config.DepthMode.RAW_DEPTH_ONLY*/
         arSceneView.getCameraStream()
                 .setDepthOcclusionMode(CameraStream.DepthOcclusionMode.DEPTH_OCCLUSION_ENABLED);
-        joystick.setOnMoveListener(this::moveModel);
+
+        joystick.setOnMoveListener((angle, strength) -> joystickHelper.moveModel(angle, strength, /* Camera Position */arSceneView.getScene().getCamera().getLocalPosition()));
 
     }
+
+    /* THIS METHOD WILL PLACE OBJECT ON THE PLANE OR USED TO FIND DISTANCE BETWEEN PLANES.*/
     @Override
     public void onTapPlane(HitResult hitResult, Plane plane, MotionEvent motionEvent) {
-
         if (!checkingDistance) {
             if (model == null) {
                 Toast.makeText(this, "Select Model" + model, Toast.LENGTH_SHORT).show();
