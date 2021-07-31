@@ -17,7 +17,7 @@ import com.example.ar.R;
 import java.util.List;
 
 import de.hdodenhof.circleimageview.CircleImageView;
-
+/*Adapter for the models recycler view in the modelSelectingDialog in MainActivity*/
 public class ModelAdapter extends RecyclerView.Adapter<ModelAdapter.ViewHolder> {
 
     private List<Model> models;

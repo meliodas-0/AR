@@ -17,25 +17,13 @@ import com.google.ar.sceneform.rendering.ShapeFactory;
 public class Model {
     private final String name;
     private String uri;
-    private float scale = 1f;
-    private float yDistance = 0.1f;
     private boolean isShape = false;
     private SHAPE shape = null;
     private ModelRenderable modelRenderable = null;
     private final Context mContext;
     private final int drawable;
-    //7042054385 Rajesh singhal
 
-    public Model(Context context, String name, String uri, float scale, float yDistance, int drawable) {
-        this.mContext = context;
-        this.name = name;
-        this.uri = uri;
-        this.scale = scale;
-        this.yDistance = yDistance;
-        this.drawable = drawable;
-        makeModel();
-    }
-
+    /*Use this if the model is glb*/
     public Model(Context context, String name, String uri, int drawable) {
         this.name = name;
         this.uri = uri;
@@ -43,8 +31,7 @@ public class Model {
         this.drawable = drawable;
         makeModel();
     }
-
-
+    /*Use this if the model is to be made in the app ex. sphere */
     public Model(Context context, String name, boolean isShape, SHAPE shape, int drawable){
         this.name = name;
         this.mContext = context;

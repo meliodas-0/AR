@@ -58,7 +58,7 @@ import java.util.Stack;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 import io.github.controlwear.virtual.joystick.android.JoystickView;
-
+/*Initial Activity*/
 public class MainActivity extends AppCompatActivity implements
         FragmentOnAttachListener,
         BaseArFragment.OnTapArPlaneListener,

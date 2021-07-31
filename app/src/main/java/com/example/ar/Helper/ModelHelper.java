@@ -18,12 +18,17 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Stack;
 
+/**
+ * Helper to manage the Model.
+ */
 public class ModelHelper {
     private final List<Model> modelList;
     private  final Context mContext;
     private boolean placeObjectOverObject = false;
     private final TouchHelper touchHelper;
     private final SnackbarHelper snackbarHelper;
+    /*This contains the models which are selected and clears when any model is deleted.
+    * Top represents the latest tapped model.*/
     private final Stack<TransformableNode> nodesSelected;
     private boolean firstTimeChildSelected;
 
@@ -47,6 +52,8 @@ public class ModelHelper {
             activity.modelNumber = index;
         }
     }
+
+    /*This method selected the particular node */
     private void selectNode(TransformableNode node) {
 
         MainActivity mainActivity = (MainActivity) mContext;
@@ -69,6 +76,7 @@ public class ModelHelper {
         node.select();
     }
 
+    /*method place the model on the plane or over the object.*/
     public void PlaceModel(Node parent){
         MainActivity mainActivity = (MainActivity) mContext;
 
@@ -100,6 +108,7 @@ public class ModelHelper {
             selectNode(model);
     }
 
+    /*Checks if the node is AnchorNode*/
     private boolean isAnchorNode(Node node){
         return node instanceof AnchorNode;
     }
@@ -116,6 +125,7 @@ public class ModelHelper {
         return nodesSelected;
     }
 
+    /*Detaches model from the parent*/
     public void deleteModel(){
         if(nodesSelected.isEmpty()) {
             Toast.makeText(mContext, "No node selected", Toast.LENGTH_SHORT).show();
@@ -141,6 +151,8 @@ public class ModelHelper {
             n.setParent(null);
         }
     }
+
+    /*Move axis in verical directions with the arrow buttons shown when we select the model.*/
     public void moveModelInYAxis(View view){
         TransformableNode node = getNodesSelected().peek();
         Vector3 position =node.getLocalPosition();

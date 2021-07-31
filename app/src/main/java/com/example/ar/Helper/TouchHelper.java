@@ -7,13 +7,18 @@ import android.view.View;
 import android.view.View.OnTouchListener;
 
 
-public class TouchHelper implements OnTouchListener {
+/**
+ * Helper to manage the touch gestures. Hides the Android boilerplate code, and exposes simpler
+ * methods.
+ */
+public class TouchHelper{
     //Gesture constants
     private float mDownX;
     private float mDownY;
     private final float SCROLL_THRESHOLD = 10;
     boolean isClick = false;
-
+/*
+* returns true if the tap is detected and returns false when drag is detected.*/
     public boolean triggerEvent(MotionEvent ev){
         Log.i("motionevent action", "onTapPlane: " + ev.getAction());
         switch (ev.getAction() & MotionEvent.ACTION_MASK) {
@@ -37,8 +42,4 @@ public class TouchHelper implements OnTouchListener {
         return false;
     }
 
-    @Override
-    public boolean onTouch(View v, MotionEvent event) {
-        return triggerEvent(event);
-    }
 }

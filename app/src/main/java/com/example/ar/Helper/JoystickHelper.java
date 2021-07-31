@@ -5,7 +5,10 @@ import android.content.Context;
 import com.example.ar.MainActivity;
 import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.ux.TransformableNode;
-
+/**
+ * Helper to manage the Joystick. Hides the Android boilerplate code, and exposes simpler
+ * methods.
+ */
 public class JoystickHelper {
     Context context;
 
@@ -13,7 +16,7 @@ public class JoystickHelper {
         this.context = context;
     }
 
-
+    /*Move model with the joystick according to the camera angle.*/
     public void moveModel(int angle , int strength, Vector3 cameraPosition){
         MainActivity mainActivity = (MainActivity) context;
         TransformableNode node = mainActivity.modelHelper.getNodesSelected().peek();

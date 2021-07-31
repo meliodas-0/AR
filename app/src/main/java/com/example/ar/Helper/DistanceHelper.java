@@ -12,10 +12,17 @@ import com.google.ar.sceneform.math.Vector3;
 import com.google.ar.sceneform.ux.TransformableNode;
 
 import java.util.Stack;
-
+/**
+ * Helper to manage the Distances. Hides the Android boilerplate code, and exposes simpler
+ * methods.
+ */
 public class DistanceHelper {
     Context context;
     private DISTANCE_TO_FIND_BETWEEN distanceToFindBetween = DISTANCE_TO_FIND_BETWEEN.OBJECT_TO_OBJECT;
+
+    public DistanceHelper(Context context) {
+        this.context = context;
+    }
 
     public DISTANCE_TO_FIND_BETWEEN getDistanceToFindBetween() {
         return distanceToFindBetween;
@@ -25,10 +32,7 @@ public class DistanceHelper {
         this.distanceToFindBetween = distanceToFindBetween;
     }
 
-    public DistanceHelper(Context context) {
-        this.context = context;
-    }
-
+    /*Used to measure distance between objects with respect to their centers*/
     private float measureObjectToObjectDistance(Vector3 startPose, Vector3 endPose) {
         float distance;
         float dx = startPose.x - endPose.x;
@@ -39,6 +43,7 @@ public class DistanceHelper {
         return distance;
     }
 
+    /*method to trigger the function by the measureButton*/
     public void checkDistance() {
         String result = "";
         MainActivity mainActivity = (MainActivity) context;
@@ -76,6 +81,7 @@ public class DistanceHelper {
         Toast.makeText(context, result, Toast.LENGTH_SHORT).show();
     }
 
+    /*Used to measure distance between object and plane with respect to their centers*/
     private float measureObjectToPlaneDistance(Vector3 objectPose, Pose planePose) {
 
         float distance;
@@ -87,6 +93,7 @@ public class DistanceHelper {
         return distance;
     }
 
+    /*Used to measure distance between planes with respect to their center pose*/
     private float measurePlaneToPlaneDistance(Pose plane1pose, Pose plane2Pose) {
         float distance;
         float dx = plane1pose.tx() - plane2Pose.tx();
@@ -97,6 +104,7 @@ public class DistanceHelper {
         return distance;
     }
 
+    /*Triggers change in the measuring targets*/
     public void changeMeasurementTargets() {
 
         MainActivity mainActivity = (MainActivity) context;
